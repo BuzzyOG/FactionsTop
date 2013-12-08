@@ -1,0 +1,12 @@
+name: FactionsTopPlayers
+main: com.comze_instancelabs.factionstopplayers.Main
+version: 1.0
+author: instancelabs
+softdepend: [Factions]
+commands:
+   factionstopplayers:
+      description: Main command
+      usage: /factionstopplayers
+   ftop:
+      description: Main command
+      usage: /ftop
