@@ -4,12 +4,14 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -29,6 +31,8 @@ import org.bukkit.plugin.java.JavaPlugin;
 import com.massivecraft.factions.entity.Faction;
 import com.massivecraft.factions.entity.FactionColl;
 import com.massivecraft.factions.entity.FactionColls;
+import com.massivecraft.factions.entity.MPlayer;
+import com.massivecraft.factions.entity.UPlayer;
 
 
 public class Main extends JavaPlugin implements Listener {
@@ -57,7 +61,8 @@ public class Main extends JavaPlugin implements Listener {
 				        	}
 			    	    	
 			                if(s != null){
-			                	s.setLine(2, getTopFaction());
+			                	
+			                	s.setLine(2, "§f" + getTopFaction());
 			                	s.update();
 			                }else{
 			                	torem.add(p_);
@@ -74,13 +79,18 @@ public class Main extends JavaPlugin implements Listener {
 				}
 				
 			}
-		}, 1200, 1200); // 60 seconds
+		}, 2*1200, 2*1200); // 2x 60 seconds = 2 mins
 	}
 	
 	public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args){
 		
 		if(cmd.getName().equalsIgnoreCase("factionstopplayer") || cmd.getName().equalsIgnoreCase("ftop")){
-			//
+			sender.sendMessage("§2 You can create signs in the following format:");
+			sender.sendMessage("§2 1st line: §6/factionstop");
+			sender.sendMessage("§2 2nd line: §6faction");
+			sender.sendMessage("§2 or");
+			sender.sendMessage("§2 1st line: §6/factionstop");
+			sender.sendMessage("§2 2nd line: §6player");
 			return true;
 		}
 		return false;
@@ -93,10 +103,13 @@ public class Main extends JavaPlugin implements Listener {
 			if (event.getClickedBlock().getType() == Material.SIGN_POST
 					|| event.getClickedBlock().getType() == Material.WALL_SIGN) {
 				Sign s = (Sign) event.getClickedBlock().getState();
-
-				for (int i = 0; i < s.getLines().length - 1; i++) {
-					if (s.getLine(i).equalsIgnoreCase("§4[drakonnastop]")) {
-	                	s.setLine(2, getTopFaction());
+				if (s.getLine(0).equalsIgnoreCase("§4[factionstop]")) {
+					if(s.getLine(1).equalsIgnoreCase("§1top faction:")){
+						s.setLine(2, "§f" + getTopFaction());
+	                	s.update();	
+					}else if(s.getLine(1).equalsIgnoreCase("§1player info:")){
+						s.setLine(2, "§f" + event.getPlayer().getName());
+						s.setLine(3, "§f" + getPlayer(event.getPlayer().getName()));
 	                	s.update();
 					}
 				}
@@ -105,28 +118,58 @@ public class Main extends JavaPlugin implements Listener {
 	}
 
 	 
-	static Map sortByValue(Map map) {
-	     List list = new LinkedList(map.entrySet());
-	     Collections.sort(list, new Comparator() {
-	          public int compare(Object o1, Object o2) {
-	               return ((Comparable) ((Map.Entry) (o1)).getValue())
-	              .compareTo(((Map.Entry) (o2)).getValue());
-	          }
-	     });
+	public LinkedHashMap sortHashMapByValuesD(HashMap passedMap) {
+		   List mapKeys = new ArrayList(passedMap.keySet());
+		   List mapValues = new ArrayList(passedMap.values());
+		   Collections.sort(mapValues);
+		   Collections.sort(mapKeys);
 
-	    Map result = new LinkedHashMap();
-	    for (Iterator it = list.iterator(); it.hasNext();) {
-	        Map.Entry entry = (Map.Entry)it.next();
-	        result.put(entry.getKey(), entry.getValue());
-	    }
-	    return result;
-	} 
+		   LinkedHashMap sortedMap = new LinkedHashMap();
+
+		   Iterator valueIt = mapValues.iterator();
+		   while (valueIt.hasNext()) {
+		       Object val = valueIt.next();
+		       Iterator keyIt = mapKeys.iterator();
+
+		       while (keyIt.hasNext()) {
+		           Object key = keyIt.next();
+		           String comp1 = passedMap.get(key).toString();
+		           String comp2 = val.toString();
+
+		           if (comp1.equals(comp2)){
+		               passedMap.remove(key);
+		               mapKeys.remove(key);
+		               sortedMap.put((String)key, (Double)val);
+		               break;
+		           }
+
+		       }
+
+		   }
+		   return sortedMap;
+		}
 	 
 	@EventHandler
 	public void onSignChange(SignChangeEvent event) {
 		Player p = event.getPlayer();
 		if (event.getLine(0).toLowerCase().contains("/factionstop")) {
-			if (event.getPlayer().hasPermission("factionstopplayers.create")) {
+			if (event.getPlayer().hasPermission("factionstopplayers.create")) {				
+				if(event.getLine(1).equalsIgnoreCase("faction")){
+					event.setLine(0, "§4[FactionsTop]");
+					event.setLine(1, "§1Top Faction:");
+					event.setLine(2, "§f" + getTopFaction());
+				}else if(event.getLine(1).equalsIgnoreCase("player")){
+					event.setLine(0, "§4[FactionsTop]");
+					event.setLine(1, "§1Player Info:");
+					event.setLine(2, "§f" + event.getPlayer().getName());
+					event.setLine(3, "§f" + getPlayer(event.getPlayer().getName()));
+					return;
+				}else{
+					event.setLine(0, "§4[FactionsTop]");
+					event.setLine(1, "§1Top Faction:");
+					event.setLine(2, "§f" + getTopFaction());
+				}
+				
 				String x = Integer.toString(event.getBlock().getLocation().getBlockX());
 				String y = Integer.toString(event.getBlock().getLocation().getBlockY());
 				String z = Integer.toString(event.getBlock().getLocation().getBlockZ());
@@ -136,15 +179,26 @@ public class Main extends JavaPlugin implements Listener {
 				getConfig().set("signs." + base + ".y", event.getBlock().getLocation().getBlockY());
 				getConfig().set("signs." + base + ".z", event.getBlock().getLocation().getBlockZ());
 				this.saveConfig();
-				event.setLine(0, "§4[DrakonnasTop]");
-				event.setLine(1, "§3Top Faction:");
-				event.setLine(2, getTopFaction());
 			} else {
 				event.getBlock().breakNaturally();
 				p.sendMessage(ChatColor.GOLD + "[FactionsTopPlayers] "
 						+ ChatColor.DARK_RED + "You don't have permission!");
 			}
 		}
+	}
+	
+	public String getPlayer(String player){
+		String ret = "null";
+		try{	
+			UPlayer p = UPlayer.get(player);
+			ret = "Power: " +  Double.toString(Math.round(p.getPower()*100)/100.0d);
+		}catch(Exception e){
+			System.out.println(e.getMessage());
+			for(StackTraceElement m : e.getStackTrace()){
+				System.out.println(m.toString());
+			}
+		}
+		return ret;
 	}
 	
 	public String getTopFaction(){
@@ -154,17 +208,32 @@ public class Main extends JavaPlugin implements Listener {
 			{
 			    for (Faction f : fc.getAll())
 			    {
+			    	//getServer().broadcastMessage(f.getName() + " " + Double.toString(f.getPower()));
+			    	//getLogger().info(f.getName() + " " + Double.toString(f.getPower()));
 			    	factions.put(f.getName(), f.getPower());
-			        //System.out.println(f.getUniverse() + " - " + f.getName() + " - " + f.getPower());
 			    }
 			}
-			LinkedHashMap<String, Double> factionstop = new LinkedHashMap<String, Double>(sortByValue(factions));
+			LinkedHashMap<String, Double> factionstop = this.sortHashMapByValuesD(factions);
+			//getLogger().info(Integer.toString(factionstop.size()));
 			String t = ""; //factionstop.entrySet().iterator().next().getKey();
-			for(Entry et : factionstop.entrySet()){
+
+			final Set<Entry<String, Double>> mapValues = factionstop.entrySet();
+		    final int maplength = mapValues.size();
+		    final Entry<String,Double>[] test = new Entry[maplength];
+		    mapValues.toArray(test);
+
+		    //System.out.print("Last Key:"+test[maplength-1].getKey());
+		    //System.out.println("Last Value:"+test[maplength-1].getValue());
+		    
+		    t = test[maplength-4].getKey();
+		    
+			/*for (Entry<String, Double> entry : factionstop.entrySet()){
 				if(!factionstop.entrySet().iterator().hasNext()){
-					t = (String) et.getKey();
+					getServer().broadcastMessage(entry.getKey() + " " + Double.toString(entry.getValue()));
+			    	getLogger().info(entry.getKey() + " " + Double.toString(entry.getValue()));
+					t = entry.getKey();
 				}
-			}
+			}*/
 			return t;
 		}catch(Exception e){
 			getLogger().info(e.toString());
