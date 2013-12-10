@@ -61,9 +61,20 @@ public class Main extends JavaPlugin implements Listener {
 				        	}
 			    	    	
 			                if(s != null){
-			                	
-			                	s.setLine(2, "§f" + getTopFaction());
-			                	s.update();
+			                	if(s.getLine(0).equalsIgnoreCase("§4[factionstop]")){
+			                		if(s.getLine(1).equalsIgnoreCase("§1top faction:")){
+				                		s.setLine(2, "§f" + getTopFaction());
+					                	s.update();		
+			                		}else if(s.getLine(1).equalsIgnoreCase("§1player info:")){
+			                			// do not update player info
+			                		}else{
+			                			s.setLine(2, "§f" + getTopFaction());
+					                	s.update();	
+			                		}
+				                	
+			                	}else{
+			                		torem.add(p_);
+			                	}
 			                }else{
 			                	torem.add(p_);
 			                }
